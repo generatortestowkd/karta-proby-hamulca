@@ -639,7 +639,13 @@ export default function BrakeTestCalculator() {
               <div className="grid lg:grid-cols-2 gap-6 divide-x-0 lg:divide-x-2 divide-gray-300">
                 {/* Lewy panel - wybór pojazdów */}
                 <div className="pr-0 lg:pr-6">
-                  <h2 className="text-xl font-semibold text-blue-900 mb-4">Wybór pojazdów</h2>
+                  <h2 className="text-xl font-semibold text-blue-900 mb-3">Wybór pojazdów</h2>
+
+                  <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-md">
+                    <p className="text-sm text-blue-900">
+                      Przy wykonywaniu próby hamulca dla dwóch połączonych składów należy wybrać dwa pojazdy.
+                    </p>
+                  </div>
 
                   <div className="space-y-4">
                     <div>
