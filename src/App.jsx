@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, CheckCircle, Lock, X, Plus, Trash2, RotateCcw, Download, Upload, LogOut, ArrowDown, ArrowUp } from 'lucide-react';
+import {
+  AlertCircle, CheckCircle, AlertTriangle, Lock, X, Plus, Trash2, Download, Upload,
+  LogOut, ArrowDown, ArrowUp, RefreshCw
+} from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 
-// ===== FIREBASE (ten sam projekt co „Zestawienie pojazdów KD”) =====
+// ===== FIREBASE (ten sam projekt co „Zestawienie pojazdów KD” i „Karta próby hamulca”) =====
 const firebaseConfig = {
   apiKey: "AIzaSyDPENv7EmaYfmg_Zkvz7eHmG47aQ_beh_8",
   authDomain: "zestawienie-pojazdow.firebaseapp.com",
@@ -17,40 +20,20 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
-// Dane karty próby hamulca trzymamy w osobnej kolekcji „kph”,
-// żeby nie mieszały się z danymi zestawienia pojazdów.
-const VEHICLES_DOC = doc(db, 'kph', 'pojazdy');
-const UPDATE_DOC = doc(db, 'kph', 'aktualizacja');
+// Dane tej aplikacji są w osobnej kolekcji „kph_sluzbowy”.
+// Zwykła karta próby hamulca używa kolekcji „kph” — tu tylko ją odczytujemy (import listy).
+const VEHICLES_DOC = doc(db, 'kph_sluzbowy', 'pojazdy');
+const UPDATE_DOC = doc(db, 'kph_sluzbowy', 'aktualizacja');
+const MAIN_CARD_VEHICLES_DOC = doc(db, 'kph', 'pojazdy');
 
 // ===== USTAWIENIA =====
 const ADMIN_PASSWORD = 'KPH2026';
-
-const DEFAULT_VEHICLES = [
-  { name: "SA108-011", masaOgolna: 59, masaHamujaca: 82, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA132-002", masaOgolna: 98, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA134-001 do SA134-002", masaOgolna: 86, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA134-003 do SA134-007", masaOgolna: 98, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA134-023 do SA134-025", masaOgolna: 98, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA135-001 do SA135-003", masaOgolna: 55, masaHamujaca: 93, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA135-004 do SA135-009", masaOgolna: 55, masaHamujaca: 93, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA139-010 do SA139-014", masaOgolna: 106, masaHamujaca: 157, cisnienie: 1.0, hamulecElektro: "-", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "48WEc-024 do 48WEc-036", masaOgolna: 201, masaHamujaca: 358, cisnienie: 0.95, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "31WE-001 do 31WE-005", masaOgolna: 172, masaHamujaca: 281, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "31WE-020 do 31WE-024", masaOgolna: 172, masaHamujaca: 281, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "36WEa-011 do 36WEa-016", masaOgolna: 135, masaHamujaca: 217, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "36WEh-012 do 36WEh-017", masaOgolna: 143, masaHamujaca: 228, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "45WE-019 do 45WE-029", masaOgolna: 207, masaHamujaca: 335, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57-1703", masaOgolna: 138, masaHamujaca: 130, cisnienie: 0.7, hamulecElektro: "-", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AKD 1937", masaOgolna: 155, masaHamujaca: 174, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AKM 1718", masaOgolna: 140, masaHamujaca: 165, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AL 1501", masaOgolna: 147, masaHamujaca: 161, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AL 1542", masaOgolna: 147, masaHamujaca: 161, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN67AL 1938", masaOgolna: 145, masaHamujaca: 161, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" }
-].map((v, i) => ({ id: 'v' + (i + 1), ...v }));
+const DEFAULT_UPDATE = { date: '', changes: '' };
 
 const EMPTY_VEHICLE = {
-  name: '', masaOgolna: '', masaHamujaca: '', cisnienie: '',
-  hamulecElektro: 'TAK', ukladSterowania: 'TAK', ukladDrzwi: 'TAK', inne: 'TAK'
+  name: '', masaSluzbowa: '', masaHamujaca: '', cisnienieGlowne: '', cisnienie: '',
+  hamulecElektro: 'TAK', ukladSterowania: 'TAK', ukladDrzwi: 'TAK', inne: 'TAK',
+  sprawdzony: true
 };
 
 const YES_NO_FIELDS = [
@@ -60,50 +43,85 @@ const YES_NO_FIELDS = [
   { key: 'inne', label: 'Inne urządzenia' }
 ];
 
-// ===== INFORMACJA O AKTUALIZACJI =====
-const DEFAULT_UPDATE = {
-  date: '2026-09-25',
-  changes: 'Dodano tryb administratora, edycję listy pojazdów oraz wzory do obliczeń.'
-};
-
-const formatDate = (iso) => {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return y && m && d ? `${d}.${m}.${y}` : iso;
-};
-
-const todayIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
+// ===== POMOCNICZE =====
 const toNumber = (val) => {
   if (val === '' || val === null || val === undefined) return '';
   const n = parseFloat(String(val).replace(',', '.'));
   return isNaN(n) ? '' : n;
 };
 
+const fmt = (n) => (Math.round(n * 100) / 100).toString().replace('.', ',');
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+const formatDate = (iso) => {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return d && m && y ? `${d}.${m}.${y}` : iso;
+};
+
+// Pojazd z zwykłej karty (masaOgolna) → pojazd tej aplikacji (masaSluzbowa, do sprawdzenia)
+const fromMainCard = (v, i) => ({
+  id: v.id || 'v' + Date.now() + '_' + i,
+  name: v.name || '',
+  masaSluzbowa: v.masaOgolna ?? '',
+  masaHamujaca: v.masaHamujaca ?? '',
+  cisnienieGlowne: v.cisnienieGlowne ?? 0.5,
+  cisnienie: v.cisnienie ?? '',
+  hamulecElektro: v.hamulecElektro || '-',
+  ukladSterowania: v.ukladSterowania || '-',
+  ukladDrzwi: v.ukladDrzwi || '-',
+  inne: v.inne || '-',
+  sprawdzony: false
+});
+
 // ===== UŁAMEK DO WZORÓW =====
 function Fraction({ top, bottom }) {
   return (
     <span className="inline-flex flex-col items-center align-middle mx-1 leading-tight">
       <span className="px-1">{top}</span>
-      <span className="px-1 border-t border-gray-800">{bottom}</span>
+      <span className="px-1 border-t border-slate-800">{bottom}</span>
     </span>
   );
 }
 
-export default function BrakeTestCalculator() {
-  const [vehicles, setVehicles] = useState(DEFAULT_VEHICLES);
+function RoundBadge({ up }) {
+  const label = up ? 'Wynik zaokrąglamy w górę' : 'Wynik zaokrąglamy w dół';
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className={`inline-flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 ${
+        up ? 'bg-yellow-400 text-blue-900' : 'bg-blue-900 text-yellow-300'
+      }`}
+    >
+      {up ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+    </span>
+  );
+}
+
+function ResultRow({ label, sub, value, unit, strong }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-3 border-b border-dashed border-slate-300 last:border-b-0">
+      <div>
+        <p className="text-slate-800">{label}</p>
+        {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+      </div>
+      <p className={`text-right whitespace-nowrap tabular-nums ${strong ? 'text-2xl font-bold text-blue-900' : 'text-xl font-semibold text-slate-900'}`}>
+        {value}<span className="text-sm font-normal text-slate-500 ml-1">{unit}</span>
+      </p>
+    </div>
+  );
+}
+
+export default function App() {
+  const [vehicles, setVehicles] = useState([]);
   const [vehiclesLoaded, setVehiclesLoaded] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(''); // '', 'saving', 'saved', 'error'
-  const [saveError, setSaveError] = useState('');
-  const vehiclesDirty = useRef(false);
-  const updateDirty = useRef(false);
+  const [updateInfo, setUpdateInfo] = useState(DEFAULT_UPDATE);
+
   const [vehicle1, setVehicle1] = useState('');
   const [vehicle2, setVehicle2] = useState('');
   const [procentWymagany, setProcentWymagany] = useState('');
-  const [showResults, setShowResults] = useState(false);
 
   // tryb administratora
   const [showLogin, setShowLogin] = useState(false);
@@ -113,23 +131,26 @@ export default function BrakeTestCalculator() {
   const [newVehicle, setNewVehicle] = useState(EMPTY_VEHICLE);
   const [addError, setAddError] = useState('');
   const [adminMessage, setAdminMessage] = useState('');
+  const [saveStatus, setSaveStatus] = useState(''); // '', 'saving', 'saved', 'error'
+  const [saveError, setSaveError] = useState('');
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // informacja o aktualizacji (data + opis zmian)
-  const [updateInfo, setUpdateInfo] = useState(DEFAULT_UPDATE);
+  const vehiclesDirty = useRef(false);
+  const updateDirty = useRef(false);
 
-  // zmiany robione przez administratora — oznaczamy je do zapisu w bazie
+  // zmiany admina oznaczamy do zapisu w bazie
   const changeVehicles = (updater) => { vehiclesDirty.current = true; setVehicles(updater); };
   const changeUpdateInfo = (value) => { updateDirty.current = true; setUpdateInfo(value); };
 
-  // odczyt z bazy na żywo — każda zmiana admina od razu pojawia się u wszystkich
+  // ===== ODCZYT Z BAZY NA ŻYWO =====
   useEffect(() => {
     const fallback = setTimeout(() => setVehiclesLoaded(true), 6000);
 
     const unsubVehicles = onSnapshot(VEHICLES_DOC, snap => {
       if (snap.metadata.hasPendingWrites) return;
       const list = snap.exists() ? snap.data().list : null;
-      if (Array.isArray(list) && list.length > 0) setVehicles(list);
+      if (Array.isArray(list)) setVehicles(list);
       setVehiclesLoaded(true);
     }, err => {
       console.error('Nie udało się pobrać listy pojazdów:', err);
@@ -144,7 +165,7 @@ export default function BrakeTestCalculator() {
     return () => { clearTimeout(fallback); unsubVehicles(); unsubUpdate(); };
   }, []);
 
-  // zapis do bazy (z krótkim opóźnieniem, żeby nie zapisywać przy każdym znaku)
+  // ===== ZAPIS DO BAZY =====
   const saveToDb = async (ref, data) => {
     setSaveStatus('saving');
     try {
@@ -178,56 +199,47 @@ export default function BrakeTestCalculator() {
     return () => clearTimeout(t);
   }, [updateInfo]);
 
-  // jeśli wybrany pojazd został usunięty — wyczyść wybór
+  // jeśli wybrany pojazd zniknął z listy — czyścimy wybór
   useEffect(() => {
-    if (vehicle1 && !vehicles.some(v => v.id === vehicle1)) { setVehicle1(''); setShowResults(false); }
+    if (vehicle1 && !vehicles.some(v => v.id === vehicle1)) setVehicle1('');
     if (vehicle2 && !vehicles.some(v => v.id === vehicle2)) setVehicle2('');
   }, [vehicles, vehicle1, vehicle2]);
 
-  const selectedVehicle1 = vehicles.find(v => v.id === vehicle1);
-  const selectedVehicle2 = vehicles.find(v => v.id === vehicle2);
+  // ===== OBLICZENIA =====
+  const selected = [vehicle1, vehicle2]
+    .map(id => vehicles.find(v => v.id === id))
+    .filter(Boolean);
 
-  const handleCalculate = () => {
-    if (selectedVehicle1 && procentWymagany) setShowResults(true);
-  };
-
-  const handleReset = () => {
-    setVehicle1('');
-    setVehicle2('');
-    setProcentWymagany('');
-    setShowResults(false);
-  };
+  const pw = toNumber(procentWymagany);
+  const pwError = procentWymagany !== '' && (pw === '' || pw <= 0 || pw > 250)
+    ? 'Wpisz procent większy od 0 (np. 65).' : '';
 
   const calculateResults = () => {
-    if (!selectedVehicle1 || !procentWymagany) return null;
+    if (selected.length === 0 || pw === '' || pwError) return null;
+    const masaOgolna = selected.reduce((s, v) => s + (toNumber(v.masaSluzbowa) || 0), 0);
+    const masaHamujacaRzeczywista = selected.reduce((s, v) => s + (toNumber(v.masaHamujaca) || 0), 0);
+    if (masaOgolna <= 0) return null;
 
-    const pw = parseFloat(procentWymagany);
-    const masaOgolna = Number(selectedVehicle1.masaOgolna) + Number(selectedVehicle2?.masaOgolna || 0);
-    const masaHamujacaRzeczywista = Number(selectedVehicle1.masaHamujaca) + Number(selectedVehicle2?.masaHamujaca || 0);
-    if (!masaOgolna) return null;
-
-    // Mhw = Mo × Pw / 100 — zaokrąglamy w górę
-    const masaHamujacaWymagana = Math.ceil((masaOgolna * pw) / 100);
-
-    // Pr = 100 × Mhr / Mo — zaokrąglamy w dół
-    const procentMasyHamujacejRzeczywistej = Math.floor((masaHamujacaRzeczywista * 100) / masaOgolna);
-
-    const cisnienieSprezonegoPowietrza = selectedVehicle2
-      ? Math.max(Number(selectedVehicle1.cisnienie), Number(selectedVehicle2.cisnienie))
-      : Number(selectedVehicle1.cisnienie);
+    const masaHamujacaWymaganaDokladna = masaOgolna * pw / 100;
+    const masaHamujacaWymagana = Math.ceil(masaHamujacaWymaganaDokladna - 1e-9);
+    const procentDokladny = 100 * masaHamujacaRzeczywista / masaOgolna;
+    const procentMasyHamujacejRzeczywistej = Math.floor(procentDokladny + 1e-9);
+    const cisnienie = Math.max(...selected.map(v => toNumber(v.cisnienie) || 0));
+    const cisnienieGlowne = Math.max(...selected.map(v => toNumber(v.cisnienieGlowne) || 0));
 
     const isSuccess = masaHamujacaRzeczywista >= masaHamujacaWymagana &&
                       procentMasyHamujacejRzeczywistej >= pw;
 
     return {
       masaOgolna, masaHamujacaRzeczywista,
-      masaHamujacaWymagana,
-      procentMasyHamujacejRzeczywistej,
-      cisnienieSprezonegoPowietrza, isSuccess
+      masaHamujacaWymagana, masaHamujacaWymaganaDokladna,
+      procentMasyHamujacejRzeczywistej, procentDokladny,
+      cisnienie, cisnienieGlowne, isSuccess
     };
   };
 
   const results = calculateResults();
+  const unverified = selected.filter(v => v.sprawdzony === false);
 
   // ===== LOGOWANIE =====
   const handleLogin = () => {
@@ -241,17 +253,9 @@ export default function BrakeTestCalculator() {
     }
   };
 
-  const closeLogin = () => {
-    setShowLogin(false);
-    setPassword('');
-    setLoginError('');
-  };
+  const closeLogin = () => { setShowLogin(false); setPassword(''); setLoginError(''); };
 
-  const handleLogout = () => {
-    setIsAdmin(false);
-    setAdminMessage('');
-    setAddError('');
-  };
+  const handleLogout = () => { setIsAdmin(false); setAdminMessage(''); setAddError(''); };
 
   // ===== EDYCJA POJAZDÓW =====
   const updateVehicle = (id, field, value) => {
@@ -267,31 +271,49 @@ export default function BrakeTestCalculator() {
 
   const handleAddVehicle = () => {
     const name = newVehicle.name.trim();
-    const mo = toNumber(newVehicle.masaOgolna);
+    const ms = toNumber(newVehicle.masaSluzbowa);
     const mh = toNumber(newVehicle.masaHamujaca);
     const p = toNumber(newVehicle.cisnienie);
+    const pg = toNumber(newVehicle.cisnienieGlowne);
 
     if (!name) return setAddError('Wpisz nazwę serii pojazdów.');
     if (vehicles.some(v => v.name.trim().toLowerCase() === name.toLowerCase()))
       return setAddError('Pojazd o tej nazwie już jest na liście.');
-    if (mo === '' || mo <= 0) return setAddError('Wpisz masę ogólną większą od zera.');
+    if (ms === '' || ms <= 0) return setAddError('Wpisz masę bez podróżnych większą od zera.');
     if (mh === '' || mh <= 0) return setAddError('Wpisz masę hamującą większą od zera.');
-    if (p === '' || p <= 0) return setAddError('Wpisz ciśnienie większe od zera.');
+    if (pg === '' || pg <= 0) return setAddError('Wpisz ciśnienie powietrza w przewodzie głównym większe od zera.');
+    if (p === '' || p <= 0) return setAddError('Wpisz ciśnienie sprężonego powietrza w przewodzie większe od zera.');
 
     changeVehicles(list => [...list, {
       ...newVehicle, id: 'v' + Date.now(), name,
-      masaOgolna: mo, masaHamujaca: mh, cisnienie: p
+      masaSluzbowa: ms, masaHamujaca: mh, cisnienieGlowne: pg, cisnienie: p, sprawdzony: true
     }]);
     setNewVehicle(EMPTY_VEHICLE);
     setAddError('');
     setAdminMessage(`Dodano pojazd „${name}”.`);
   };
 
-  const handleRestoreDefaults = () => {
-    if (window.confirm('Przywrócić oryginalną listę pojazdów? Wszystkie zmiany i dodane pojazdy zostaną usunięte.')) {
-      changeVehicles(DEFAULT_VEHICLES);
-      setAdminMessage('Przywrócono domyślną listę pojazdów.');
+  const handleImportFromMainCard = async () => {
+    const replace = vehicles.length === 0 || window.confirm(
+      'Pobrać listę pojazdów z Karty próby hamulca?\n\nObecna lista w tej aplikacji zostanie zastąpiona. ' +
+      'Masa ogólna z tamtej karty zostanie wpisana jako masa bez podróżnych i oznaczona „do sprawdzenia”.'
+    );
+    if (!replace) return;
+    setImporting(true);
+    try {
+      const snap = await getDoc(MAIN_CARD_VEHICLES_DOC);
+      const list = snap.exists() ? snap.data().list : null;
+      if (!Array.isArray(list) || list.length === 0) {
+        setAdminMessage('W Karcie próby hamulca nie ma jeszcze zapisanej listy pojazdów. Zapisz ją tam w panelu administratora albo dodaj pojazdy tutaj ręcznie.');
+      } else {
+        changeVehicles(list.map(fromMainCard));
+        setAdminMessage(`Pobrano ${list.length} pojazdów. Sprawdź masę bez podróżnych przy każdym z nich i zaznacz „Dane sprawdzone”.`);
+      }
+    } catch (e) {
+      console.error(e);
+      setAdminMessage('Nie udało się pobrać listy z Karty próby hamulca: ' + (e.message || e));
     }
+    setImporting(false);
   };
 
   const handleExport = () => {
@@ -299,12 +321,12 @@ export default function BrakeTestCalculator() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'pojazdy-karta-proby-hamulca.json';
+    a.download = 'pojazdy-przejazd-sluzbowy.json';
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = (e) => {
+  const handleImportFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -312,483 +334,364 @@ export default function BrakeTestCalculator() {
       try {
         const data = JSON.parse(reader.result);
         const valid = Array.isArray(data) && data.length > 0 &&
-          data.every(v => v && typeof v.name === 'string' && v.masaOgolna !== undefined && v.masaHamujaca !== undefined);
+          data.every(v => v && typeof v.name === 'string' && v.masaHamujaca !== undefined &&
+            (v.masaSluzbowa !== undefined || v.masaOgolna !== undefined));
         if (!valid) throw new Error('zły format');
-        const withIds = data.map((v, i) => ({ ...v, id: v.id || 'v' + Date.now() + '_' + i }));
-        if (window.confirm(`Zastąpić obecną listę ${withIds.length} pojazdami z pliku?`)) {
-          changeVehicles(withIds);
-          setAdminMessage(`Wczytano ${withIds.length} pojazdów z pliku.`);
+        const list = data.map((v, i) => v.masaSluzbowa !== undefined
+          ? { ...EMPTY_VEHICLE, ...v, id: v.id || 'v' + Date.now() + '_' + i }
+          : fromMainCard(v, i));
+        if (window.confirm(`Zastąpić obecną listę ${list.length} pojazdami z pliku?`)) {
+          changeVehicles(list);
+          setAdminMessage(`Wczytano ${list.length} pojazdów z pliku.`);
         }
       } catch {
-        setAdminMessage('Nie udało się wczytać pliku. Wybierz plik wyeksportowany z tej aplikacji.');
+        setAdminMessage('Nie udało się wczytać pliku. Wybierz plik JSON wyeksportowany z tej aplikacji lub z Karty próby hamulca.');
       }
+      e.target.value = '';
     };
     reader.readAsText(file);
-    e.target.value = '';
   };
 
-  if (!vehiclesLoaded) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-yellow-50 to-blue-50 flex items-center justify-center p-4">
-        <p className="text-blue-900 font-medium">Ładowanie listy pojazdów…</p>
-      </div>
-    );
-  }
+  const inputCls = 'w-full px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-blue-900';
 
-  const inputCls = "w-full p-2 border-2 border-blue-300 rounded-md focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400";
-  const smallInputCls = "w-full p-1.5 text-sm border-2 border-blue-200 rounded-md focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400";
-
+  // ===== WIDOK =====
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-yellow-50 to-blue-50 p-4 relative">
-      {/* Tło z pociągiem */}
-      <div className="fixed inset-0 opacity-10 pointer-events-none" style={{
-        backgroundImage: 'url(https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=1200)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}></div>
-
-      <div className="max-w-6xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-6 overflow-hidden relative">
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: 'url(https://kolejedolnoslaskie.pl/wp-content/uploads/2024/01/Koleje-Dolnoslaskie-Impuls-2-fot.-Dawid-Tatarkiewicz-19-scaled.jpg)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          ></div>
-
-          {/* Mała ikonka trybu administratora */}
-          {!isAdmin && (
-            <button
-              onClick={() => setShowLogin(true)}
-              title="Tryb administratora"
-              aria-label="Tryb administratora"
-              className="absolute top-3 right-3 z-20 p-2 rounded-full text-gray-400 hover:text-blue-900 hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-colors"
-            >
-              <Lock size={18} />
-            </button>
-          )}
-
-          {/* Autor — lewy górny róg */}
-          <div className="absolute top-3 left-3 z-20 text-xs sm:text-sm text-gray-700 font-medium bg-white/70 px-2 py-1 rounded">
-            Autor: Grzegorz Rejszel (kier. poć. 186)
-          </div>
-
-          <div className="text-center relative z-10 pt-6 sm:pt-2">
-            <h1 className="text-4xl font-bold text-blue-900">Próba hamulca</h1>
-            <p className="text-lg text-gray-700 mt-3 font-medium">Aplikacja dla kierowników pociągu wypełniających kartę próby hamulca.</p>
-
+    <div className="min-h-screen text-slate-900">
+      {/* ================= NAGŁÓWEK ================= */}
+      <header className="bg-blue-900 text-white">
+        <div className="h-1.5 bg-yellow-400" />
+        <div className="max-w-4xl mx-auto px-4 py-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-yellow-300 text-sm font-medium">Koleje Dolnośląskie</p>
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight mt-1">Karta próby hamulca</h1>
+            <p className="mt-2 inline-flex items-center gap-2 bg-yellow-400 text-blue-900 text-sm font-semibold px-3 py-1 rounded-full">
+              Przejazd służbowy bez podróżnych
+            </p>
             {(updateInfo.date || updateInfo.changes) && (
-              <div className="inline-block mt-4 bg-white/80 border-l-4 border-yellow-400 px-4 py-2 rounded text-left max-w-2xl">
-                {updateInfo.date && (
-                  <p className="text-sm font-semibold text-blue-900">Aktualizacja: {formatDate(updateInfo.date)}</p>
-                )}
-                {updateInfo.changes && (
-                  <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{updateInfo.changes}</p>
-                )}
-              </div>
+              <p className="text-sm text-blue-100 mt-3 max-w-xl">
+                {updateInfo.date && <>Aktualizacja: <strong className="text-white">{formatDate(updateInfo.date)}</strong></>}
+                {updateInfo.date && updateInfo.changes && <br />}
+                {updateInfo.changes}
+              </p>
             )}
           </div>
+          <button
+            onClick={() => (isAdmin ? handleLogout() : setShowLogin(true))}
+            title={isAdmin ? 'Wyjdź z trybu administratora' : 'Tryb administratora'}
+            aria-label={isAdmin ? 'Wyjdź z trybu administratora' : 'Tryb administratora'}
+            className="w-9 h-9 flex-shrink-0 rounded-full bg-blue-800 hover:bg-blue-700 flex items-center justify-center text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          >
+            {isAdmin ? <LogOut size={16} /> : <Lock size={16} />}
+          </button>
         </div>
+        <div className="max-w-4xl mx-auto px-4 pb-5">
+          <div role="note" className="bg-red-50 border border-red-200 rounded-md px-4 py-3 text-red-700 text-sm sm:text-base leading-snug flex items-start justify-center gap-3">
+            <AlertTriangle size={20} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-center">
+              Aplikacja ma charakter wyłącznie pomocniczy i ułatwia wypełnienie karty próby hamulca.
+              Korzystasz z niej na własną odpowiedzialność — nie zwalnia ona kierownika pociągu z obowiązku
+              sprawdzenia, czy wyliczone wartości są prawidłowe.
+            </p>
+          </div>
+        </div>
+      </header>
 
-        {isAdmin ? (
-          /* ================= PANEL ADMINISTRATORA ================= */
-          <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-blue-900">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <h2 className="text-2xl font-semibold text-blue-900">Tryb administratora — lista pojazdów</h2>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 bg-yellow-500 text-blue-900 font-bold py-2 px-4 rounded-md hover:bg-yellow-400 transition-colors"
-              >
-                <LogOut size={18} /> Zakończ i wróć
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* ================= WZORY ================= */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-white rounded-md p-3 border-l-4 border-yellow-400 shadow-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="font-serif text-lg flex items-center">
+                <span className="italic">M<sub>hw</sub></span>
+                <span className="mx-1">=</span>
+                <Fraction top={<span className="italic">M<sub>o</sub> × P<sub>w</sub></span>} bottom={<span>100</span>} />
+              </div>
+              <RoundBadge up />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">M<sub>o</sub> – masa pociągu bez podróżnych, P<sub>w</sub> – procent wymagany (z WRJ)</p>
+          </div>
+          <div className="bg-white rounded-md p-3 border-l-4 border-blue-900 shadow-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="font-serif text-lg flex items-center">
+                <span className="italic">P<sub>R</sub></span>
+                <span className="mx-1">=</span>
+                <Fraction top={<span className="italic">M<sub>hr</sub></span>} bottom={<span className="italic">M<sub>o</sub></span>} />
+                <span className="ml-1">× 100</span>
+              </div>
+              <RoundBadge />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">M<sub>hr</sub> – masa hamująca rzeczywista</p>
+          </div>
+        </section>
+
+        {/* ================= DANE WEJŚCIOWE ================= */}
+        <section className="bg-white rounded-lg shadow-sm p-5">
+          <h2 className="text-lg font-bold text-blue-900 mb-4">Dane do próby</h2>
+
+          {!vehiclesLoaded ? (
+            <p className="text-slate-500 flex items-center gap-2"><RefreshCw size={16} className="animate-spin" /> Wczytywanie listy pojazdów…</p>
+          ) : vehicles.length === 0 ? (
+            <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded text-sm text-slate-800">
+              Lista pojazdów jest jeszcze pusta. Administrator może ją pobrać z Karty próby hamulca albo dodać pojazdy ręcznie (kłódka w prawym górnym rogu).
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="v1" className="block text-sm font-medium text-slate-700 mb-2">Pojazd 1 *</label>
+                <select id="v1" value={vehicle1} onChange={e => setVehicle1(e.target.value)} className={inputCls}>
+                  <option value="">— wybierz pojazd —</option>
+                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="v2" className="block text-sm font-medium text-slate-700 mb-2">Pojazd 2 (opcjonalnie)</label>
+                <select id="v2" value={vehicle2} onChange={e => setVehicle2(e.target.value)} className={inputCls} disabled={!vehicle1}>
+                  <option value="">— brak —</option>
+                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">Wybierz, gdy jadą dwa połączone zespoły.</p>
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="pw" className="block text-sm font-medium text-slate-700 mb-1">Procent wymagany (%) *</label>
+                <p className="text-xs text-slate-500 mb-2">Bierzemy go z WRJ (wewnętrznego rozkładu jazdy).</p>
+                <input
+                  id="pw" type="text" inputMode="decimal" placeholder="np. 65"
+                  value={procentWymagany} onChange={e => setProcentWymagany(e.target.value)}
+                  className={`${inputCls} sm:max-w-xs`}
+                />
+                {pwError && <p className="text-sm text-red-700 mt-1">{pwError}</p>}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ================= WYNIK ================= */}
+        {results && (
+          <section className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className={`px-5 py-4 flex items-center gap-3 ${results.isSuccess ? 'bg-green-700' : 'bg-red-700'} text-white`}>
+              {results.isSuccess ? <CheckCircle size={28} /> : <AlertCircle size={28} />}
+              <div>
+                <p className="text-xl font-bold">{results.isSuccess ? 'Próba pomyślna' : 'Próba niepomyślna'}</p>
+                {!results.isSuccess && <p className="text-sm text-red-100">Konieczne jest wyliczenie nowej prędkości.</p>}
+              </div>
+            </div>
+
+            {unverified.length > 0 && (
+              <div className="mx-5 mt-4 p-3 bg-yellow-50 border-l-4 border-yellow-500 rounded text-sm text-slate-800 flex gap-2">
+                <AlertTriangle size={18} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                <span>
+                  Masa bez podróżnych dla {unverified.map(v => `„${v.name}”`).join(' i ')} nie została jeszcze sprawdzona przez administratora. Porównaj ją z dokumentacją pojazdu.
+                </span>
+              </div>
+            )}
+
+            <div className="px-5 py-2">
+              <ResultRow label="Masa pociągu bez podróżnych" sub="Mo – suma mas wybranych pojazdów" value={fmt(results.masaOgolna)} unit="t" />
+              <ResultRow label="Masa hamująca rzeczywista" sub="Mhr" value={fmt(results.masaHamujacaRzeczywista)} unit="t" />
+              <ResultRow
+                label="Masa hamująca wymagana"
+                sub={`Mhw = ${fmt(results.masaOgolna)} × ${fmt(pw)} / 100 = ${fmt(results.masaHamujacaWymaganaDokladna)} → w górę`}
+                value={results.masaHamujacaWymagana} unit="t"
+              />
+              <ResultRow
+                label="Procent masy hamującej rzeczywistej"
+                sub={`PR = ${fmt(results.masaHamujacaRzeczywista)} / ${fmt(results.masaOgolna)} × 100 = ${fmt(results.procentDokladny)} → w dół`}
+                value={results.procentMasyHamujacejRzeczywistej} unit="%" strong
+              />
+              <ResultRow label="Procent wymagany" sub="z WRJ" value={fmt(pw)} unit="%" />
+              <ResultRow label="Ciśnienie powietrza w przewodzie głównym" sub={selected.length > 1 ? 'większa z wartości obu pojazdów' : undefined} value={results.cisnienieGlowne ? fmt(results.cisnienieGlowne) : '—'} unit="MPa" />
+              <ResultRow label="Ciśnienie sprężonego powietrza w przewodzie" sub={selected.length > 1 ? 'większa z wartości obu pojazdów' : undefined} value={fmt(results.cisnienie)} unit="MPa" />
+            </div>
+
+            <div className="px-5 pb-5">
+              <h3 className="font-semibold text-blue-900 mt-2 mb-2">Pozostałe parametry</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500">
+                      <th className="py-1 pr-3 font-normal">Urządzenie</th>
+                      {selected.map((v, i) => <th key={v.id + i} className="py-1 px-2 font-normal">{v.name}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {YES_NO_FIELDS.map(f => (
+                      <tr key={f.key} className="border-t border-slate-200">
+                        <td className="py-2 pr-3">{f.label}</td>
+                        {selected.map((v, i) => (
+                          <td key={v.id + i} className={`py-2 px-2 font-semibold ${v[f.key] === 'TAK' ? 'text-green-700' : 'text-slate-400'}`}>{v[f.key]}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ================= PANEL ADMINISTRATORA ================= */}
+        {isAdmin && (
+          <section className="bg-white rounded-lg shadow-sm p-5 border-t-4 border-yellow-400">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-lg font-bold text-blue-900">Panel administratora</h2>
+              <button onClick={handleLogout} className="text-sm text-slate-600 hover:text-blue-900 inline-flex items-center gap-1">
+                <LogOut size={14} /> Wyjdź
               </button>
             </div>
+            <p className="text-sm text-slate-600 mb-3">Zmiany zapisują się automatycznie i od razu widzą je wszyscy.</p>
 
             <div className={`mb-4 p-3 rounded-md text-sm border-l-4 ${
               saveStatus === 'error' ? 'bg-red-50 border-red-500 text-red-800'
-              : saveStatus === 'saving' ? 'bg-yellow-50 border-yellow-400 text-blue-900'
-              : 'bg-green-50 border-green-500 text-green-800'}`}>
-              {saveStatus === 'error'
-                ? <>Nie udało się zapisać zmian w bazie. Pokaż ten komunikat w czacie: <span className="font-mono">{saveError}</span></>
-                : saveStatus === 'saving' ? 'Zapisywanie zmian…'
-                : saveStatus === 'saved' ? 'Wszystkie zmiany zapisane w bazie.'
-                : 'Zmiany wprowadzone tutaj zapiszą się w bazie i będą widoczne dla wszystkich.'}
+              : saveStatus === 'saving' ? 'bg-yellow-50 border-yellow-400 text-slate-800'
+              : 'bg-green-50 border-green-600 text-green-900'}`}>
+              {saveStatus === 'error' && <>Nie udało się zapisać zmian w bazie. Szczegóły: {saveError}</>}
+              {saveStatus === 'saving' && 'Zapisywanie…'}
+              {saveStatus === 'saved' && 'Zapisano w bazie.'}
+              {saveStatus === '' && 'Połączono z bazą.'}
             </div>
 
             {adminMessage && (
-              <div className="mb-4 p-3 rounded-md bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-900 flex justify-between items-start gap-3">
+              <div className="mb-4 p-3 rounded-md text-sm bg-blue-50 border-l-4 border-blue-900 text-blue-900 flex justify-between gap-2">
                 <span>{adminMessage}</span>
                 <button onClick={() => setAdminMessage('')} aria-label="Zamknij komunikat"><X size={16} /></button>
               </div>
             )}
 
             {/* Informacja o aktualizacji */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-md p-4 mb-6">
-              <h3 className="font-semibold text-blue-900 mb-3">Informacja o aktualizacji (wyświetlana w nagłówku)</h3>
-              <div className="grid sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data aktualizacji</label>
-                  <input
-                    type="date"
-                    value={updateInfo.date}
-                    onChange={e => changeUpdateInfo({ ...updateInfo, date: e.target.value })}
-                    className={inputCls}
-                  />
-                  <button
-                    onClick={() => changeUpdateInfo({ ...updateInfo, date: todayIso() })}
-                    className="mt-2 text-sm text-blue-900 underline hover:text-blue-700"
-                  >
-                    Ustaw dzisiejszą datę
-                  </button>
+            <div className="mb-6">
+              <h3 className="font-semibold text-slate-800 mb-2">Informacja o aktualizacji</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex gap-2">
+                  <input type="date" value={updateInfo.date} onChange={e => changeUpdateInfo({ ...updateInfo, date: e.target.value })} className={inputCls} />
+                  <button onClick={() => changeUpdateInfo({ ...updateInfo, date: todayIso() })} className="px-3 text-sm bg-slate-100 hover:bg-slate-200 rounded-md whitespace-nowrap">Dziś</button>
                 </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Wprowadzone zmiany</label>
-                  <textarea
-                    rows={3}
-                    value={updateInfo.changes}
-                    onChange={e => changeUpdateInfo({ ...updateInfo, changes: e.target.value })}
-                    placeholder="np. Dodano pojazd 36WEh-018, poprawiono masę EN57AKM 1718."
-                    className={inputCls}
-                  />
-                </div>
+                <textarea
+                  rows={2} placeholder="Opis zmian"
+                  value={updateInfo.changes} onChange={e => changeUpdateInfo({ ...updateInfo, changes: e.target.value })}
+                  className={`${inputCls} sm:col-span-2`}
+                />
               </div>
             </div>
 
-            {/* Dodawanie nowej serii */}
-            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-md p-4 mb-6">
-              <h3 className="font-semibold text-blue-900 mb-3">Dodaj nową serię pojazdów</h3>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="sm:col-span-2 lg:col-span-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nazwa (tak jak ma się wyświetlać na liście)</label>
-                  <input
-                    type="text"
-                    value={newVehicle.name}
-                    onChange={e => setNewVehicle({ ...newVehicle, name: e.target.value })}
-                    placeholder="np. 36WEh-018 do 36WEh-020"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Masa ogólna [t]</label>
-                  <input type="number" min="0" step="any" value={newVehicle.masaOgolna}
-                    onChange={e => setNewVehicle({ ...newVehicle, masaOgolna: e.target.value })} className={inputCls} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Masa hamująca [t]</label>
-                  <input type="number" min="0" step="any" value={newVehicle.masaHamujaca}
-                    onChange={e => setNewVehicle({ ...newVehicle, masaHamujaca: e.target.value })} className={inputCls} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ciśnienie [MPa]</label>
-                  <input type="number" min="0" step="0.01" value={newVehicle.cisnienie}
-                    onChange={e => setNewVehicle({ ...newVehicle, cisnienie: e.target.value })} className={inputCls} />
-                </div>
-                <div className="hidden lg:block" />
-                {YES_NO_FIELDS.map(f => (
-                  <div key={f.key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-                    <select value={newVehicle[f.key]}
-                      onChange={e => setNewVehicle({ ...newVehicle, [f.key]: e.target.value })} className={inputCls}>
-                      <option value="TAK">TAK</option>
-                      <option value="-">-</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
-              {addError && <p className="text-sm text-red-700 mt-3">{addError}</p>}
-              <button
-                onClick={handleAddVehicle}
-                className="mt-4 flex items-center gap-2 bg-blue-900 text-white font-bold py-2 px-5 rounded-md hover:bg-blue-800 transition-colors"
-              >
-                <Plus size={18} /> Dodaj pojazd
+            {/* Narzędzia listy */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              <button onClick={handleImportFromMainCard} disabled={importing}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md bg-blue-900 text-white hover:bg-blue-800 disabled:opacity-60">
+                <RefreshCw size={14} className={importing ? 'animate-spin' : ''} /> Pobierz listę z Karty próby hamulca
               </button>
+              <button onClick={handleExport} disabled={vehicles.length === 0}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md bg-slate-100 hover:bg-slate-200 disabled:opacity-50">
+                <Download size={14} /> Eksportuj do pliku
+              </button>
+              <button onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md bg-slate-100 hover:bg-slate-200">
+                <Upload size={14} /> Wczytaj z pliku
+              </button>
+              <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
             </div>
 
-            {/* Lista istniejących pojazdów */}
-            <h3 className="font-semibold text-blue-900 mb-1">Pojazdy na liście ({vehicles.length})</h3>
-            <p className="text-sm text-gray-600 mb-3">Zmiany zapisują się automatycznie i od razu widzą je wszyscy.</p>
-
-            <div className="space-y-3">
+            {/* Lista pojazdów */}
+            <h3 className="font-semibold text-slate-800 mb-2">Pojazdy ({vehicles.length})</h3>
+            <div className="space-y-3 mb-6">
               {vehicles.map(v => (
-                <div key={v.id} className="border-2 border-blue-100 rounded-md p-3 bg-blue-50/40">
-                  <div className="flex gap-2 items-end mb-2">
-                    <div className="flex-1">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Nazwa</label>
-                      <input type="text" value={v.name}
-                        onChange={e => updateVehicle(v.id, 'name', e.target.value)}
-                        className={smallInputCls + ' font-semibold'} />
-                    </div>
-                    <button
-                      onClick={() => deleteVehicle(v.id)}
-                      title="Usuń pojazd"
-                      aria-label={`Usuń ${v.name}`}
-                      className="p-2 text-red-600 hover:bg-red-100 rounded-md transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                <div key={v.id} className={`rounded-md border p-3 ${v.sprawdzony === false ? 'border-yellow-400 bg-yellow-50' : 'border-slate-200'}`}>
+                  <div className="flex gap-2 mb-2">
+                    <input value={v.name} onChange={e => updateVehicle(v.id, 'name', e.target.value)} className={`${inputCls} font-semibold`} aria-label="Nazwa pojazdu" />
+                    <button onClick={() => deleteVehicle(v.id)} title="Usuń pojazd" aria-label={`Usuń ${v.name}`}
+                      className="px-3 rounded-md text-red-700 hover:bg-red-50"><Trash2 size={16} /></button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Masa ogólna [t]</label>
-                      <input type="number" min="0" step="any" value={v.masaOgolna}
-                        onChange={e => updateVehicle(v.id, 'masaOgolna', toNumber(e.target.value))} className={smallInputCls} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Masa ham. [t]</label>
-                      <input type="number" min="0" step="any" value={v.masaHamujaca}
-                        onChange={e => updateVehicle(v.id, 'masaHamujaca', toNumber(e.target.value))} className={smallInputCls} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Ciśnienie [MPa]</label>
-                      <input type="number" min="0" step="0.01" value={v.cisnienie}
-                        onChange={e => updateVehicle(v.id, 'cisnienie', toNumber(e.target.value))} className={smallInputCls} />
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <label className="text-xs text-slate-600">Masa bez podróżnych (t)
+                      <input inputMode="decimal" value={v.masaSluzbowa} onChange={e => updateVehicle(v.id, 'masaSluzbowa', e.target.value)} className={`${inputCls} mt-1`} />
+                    </label>
+                    <label className="text-xs text-slate-600">Masa hamująca (t)
+                      <input inputMode="decimal" value={v.masaHamujaca} onChange={e => updateVehicle(v.id, 'masaHamujaca', e.target.value)} className={`${inputCls} mt-1`} />
+                    </label>
+                    <label className="text-xs text-slate-600">Ciśnienie powietrza w przewodzie głównym (MPa)
+                      <input inputMode="decimal" value={v.cisnienieGlowne ?? ''} onChange={e => updateVehicle(v.id, 'cisnienieGlowne', e.target.value)} className={`${inputCls} mt-1`} />
+                    </label>
+                    <label className="text-xs text-slate-600">Ciśnienie sprężonego powietrza w przewodzie (MPa)
+                      <input inputMode="decimal" value={v.cisnienie} onChange={e => updateVehicle(v.id, 'cisnienie', e.target.value)} className={`${inputCls} mt-1`} />
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                     {YES_NO_FIELDS.map(f => (
-                      <div key={f.key}>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
-                        <select value={v[f.key]}
-                          onChange={e => updateVehicle(v.id, f.key, e.target.value)} className={smallInputCls}>
+                      <label key={f.key} className="text-xs text-slate-600">{f.label}
+                        <select value={v[f.key]} onChange={e => updateVehicle(v.id, f.key, e.target.value)} className={`${inputCls} mt-1`}>
                           <option value="TAK">TAK</option>
                           <option value="-">-</option>
                         </select>
-                      </div>
+                      </label>
                     ))}
                   </div>
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={v.sprawdzony !== false} onChange={e => updateVehicle(v.id, 'sprawdzony', e.target.checked)} className="w-4 h-4 accent-blue-900" />
+                    Dane sprawdzone
+                  </label>
                 </div>
               ))}
             </div>
 
-            {/* Kopia zapasowa */}
-            <div className="mt-6 pt-4 border-t-2 border-gray-200 flex flex-wrap gap-3">
-              <button onClick={handleExport}
-                className="flex items-center gap-2 border-2 border-blue-900 text-blue-900 font-semibold py-2 px-4 rounded-md hover:bg-blue-50 transition-colors">
-                <Download size={18} /> Zapisz listę do pliku
-              </button>
-              <button onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 border-2 border-blue-900 text-blue-900 font-semibold py-2 px-4 rounded-md hover:bg-blue-50 transition-colors">
-                <Upload size={18} /> Wczytaj listę z pliku
-              </button>
-              <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleImport} className="hidden" />
-              <button onClick={handleRestoreDefaults}
-                className="flex items-center gap-2 border-2 border-red-600 text-red-700 font-semibold py-2 px-4 rounded-md hover:bg-red-50 transition-colors sm:ml-auto">
-                <RotateCcw size={18} /> Przywróć listę domyślną
+            {/* Dodawanie pojazdu */}
+            <div className="rounded-md bg-slate-50 p-4">
+              <h3 className="font-semibold text-slate-800 mb-3">Dodaj pojazd</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
+                <input placeholder="Nazwa serii, np. 36WEa-011 do 36WEa-016" value={newVehicle.name}
+                  onChange={e => setNewVehicle({ ...newVehicle, name: e.target.value })} className={`${inputCls} sm:col-span-4`} />
+                <input placeholder="Masa bez podróżnych (t)" inputMode="decimal" value={newVehicle.masaSluzbowa}
+                  onChange={e => setNewVehicle({ ...newVehicle, masaSluzbowa: e.target.value })} className={inputCls} />
+                <input placeholder="Masa hamująca (t)" inputMode="decimal" value={newVehicle.masaHamujaca}
+                  onChange={e => setNewVehicle({ ...newVehicle, masaHamujaca: e.target.value })} className={inputCls} />
+                <div className="hidden sm:block sm:col-span-2" />
+                <label className="text-xs text-slate-600 sm:col-span-2">Ciśnienie powietrza w przewodzie głównym (MPa)
+                  <input placeholder="np. 0,5" inputMode="decimal" value={newVehicle.cisnienieGlowne}
+                    onChange={e => setNewVehicle({ ...newVehicle, cisnienieGlowne: e.target.value })} className={`${inputCls} mt-1`} />
+                </label>
+                <label className="text-xs text-slate-600 sm:col-span-2">Ciśnienie sprężonego powietrza w przewodzie (MPa)
+                  <input placeholder="np. 1,0" inputMode="decimal" value={newVehicle.cisnienie}
+                    onChange={e => setNewVehicle({ ...newVehicle, cisnienie: e.target.value })} className={`${inputCls} mt-1`} />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                {YES_NO_FIELDS.map(f => (
+                  <label key={f.key} className="text-xs text-slate-600">{f.label}
+                    <select value={newVehicle[f.key]} onChange={e => setNewVehicle({ ...newVehicle, [f.key]: e.target.value })} className={`${inputCls} mt-1`}>
+                      <option value="TAK">TAK</option>
+                      <option value="-">-</option>
+                    </select>
+                  </label>
+                ))}
+              </div>
+              {addError && <p className="text-sm text-red-700 mb-2">{addError}</p>}
+              <button onClick={handleAddVehicle}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-yellow-400 text-blue-900 font-semibold hover:bg-yellow-300">
+                <Plus size={16} /> Dodaj pojazd
               </button>
             </div>
-          </div>
-        ) : (
-          <>
-            {/* ================= WZORY (pomoc) ================= */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6">
-              <div className="bg-white rounded-lg shadow p-2 sm:p-3 border-l-4 border-yellow-400 flex flex-col items-center text-center min-w-0 overflow-hidden">
-                <p className="text-xs font-semibold text-blue-900 mb-1 leading-tight">Masa hamująca wymagana</p>
-                <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-                  <div className="font-serif text-gray-900 flex items-center text-sm sm:text-base whitespace-nowrap">
-                    <span className="italic">M<sub>hw</sub></span>
-                    <span className="mx-0.5 sm:mx-1">=</span>
-                    <Fraction
-                      top={<span className="italic">M<sub>o</sub> × P<sub>w</sub></span>}
-                      bottom={<span>100</span>}
-                    />
-                  </div>
-                  <span className="inline-flex items-center gap-1">
-                  <span
-                    title="Wynik zaokrąglamy w górę"
-                    aria-label="Wynik zaokrąglamy w górę"
-                    className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-yellow-500 text-blue-900 flex-shrink-0"
-                  >
-                    <ArrowUp size={14} />
-                  </span>
-                  <span className="text-xs font-medium text-gray-700 leading-tight text-left">zaokrąglenie w górę</span>
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1 leading-snug break-words">M<sub>o</sub> – masa ogólna, P<sub>w</sub> – procent wymagany (z WRJ)</p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-2 sm:p-3 border-l-4 border-yellow-400 flex flex-col items-center text-center min-w-0 overflow-hidden">
-                <p className="text-xs font-semibold text-blue-900 mb-1 leading-tight">Procent masy hamującej rzeczywistej</p>
-                <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-                  <div className="font-serif text-gray-900 flex items-center text-sm sm:text-base whitespace-nowrap">
-                    <span className="italic">P<sub>R</sub></span>
-                    <span className="mx-0.5 sm:mx-1">=</span>
-                    <Fraction
-                      top={<span className="italic">M<sub>hr</sub></span>}
-                      bottom={<span className="italic">M<sub>o</sub></span>}
-                    />
-                    <span>× 100</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1">
-                  <span
-                    title="Wynik zaokrąglamy w dół"
-                    aria-label="Wynik zaokrąglamy w dół"
-                    className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-900 text-white flex-shrink-0"
-                  >
-                    <ArrowDown size={14} />
-                  </span>
-                  <span className="text-xs font-medium text-gray-700 leading-tight text-left">zaokrąglenie w dół</span>
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1 leading-snug break-words">M<sub>hr</sub> – masa hamująca rzeczywista, M<sub>o</sub> – masa ogólna</p>
-              </div>
-            </div>
-
-            {/* ================= WIDOK GŁÓWNY ================= */}
-            <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-yellow-400">
-              <div className="grid lg:grid-cols-2 gap-6 divide-x-0 lg:divide-x-2 divide-gray-300">
-                {/* Lewy panel - wybór pojazdów */}
-                <div className="pr-0 lg:pr-6">
-                  <h2 className="text-xl font-semibold text-blue-900 mb-3">Wybór pojazdów</h2>
-
-                  <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-md">
-                    <p className="text-sm text-blue-900">
-                      Przy wykonywaniu próby hamulca dla dwóch połączonych składów należy wybrać dwa pojazdy.
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Pojazd 1 *</label>
-                      <select value={vehicle1} onChange={(e) => setVehicle1(e.target.value)} className={inputCls}>
-                        <option value="">-- Wybierz pojazd --</option>
-                        {vehicles.map(v => (
-                          <option key={v.id} value={v.id}>{v.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {selectedVehicle1 && (
-                      <div className="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500">
-                        <p className="text-sm"><strong>Masa ogólna:</strong> {selectedVehicle1.masaOgolna} t</p>
-                        <p className="text-sm"><strong>Masa hamująca rzeczywista:</strong> {selectedVehicle1.masaHamujaca} t</p>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Pojazd 2 (opcjonalnie)</label>
-                      <select value={vehicle2} onChange={(e) => setVehicle2(e.target.value)} className={inputCls} disabled={!vehicle1}>
-                        <option value="">-- Wybierz pojazd --</option>
-                        {vehicles.map(v => (
-                          <option key={v.id} value={v.id}>{v.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {selectedVehicle2 && (
-                      <div className="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500">
-                        <p className="text-sm"><strong>Masa ogólna:</strong> {selectedVehicle2.masaOgolna} t</p>
-                        <p className="text-sm"><strong>Masa hamująca rzeczywista:</strong> {selectedVehicle2.masaHamujaca} t</p>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Procent wymagany (%) *</label>
-                      <p className="text-xs text-gray-500 mb-2">Bierzemy go z WRJ (wewnętrznego rozkładu jazdy).</p>
-                      <input type="number" value={procentWymagany} onChange={(e) => setProcentWymagany(e.target.value)}
-                        placeholder="np. 50" className={inputCls} disabled={!vehicle1} />
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        onClick={handleCalculate}
-                        disabled={!vehicle1 || !procentWymagany}
-                        className="flex-1 bg-blue-900 text-white font-bold py-3 px-6 rounded-md hover:bg-blue-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                      >
-                        WYLICZ
-                      </button>
-                      {showResults && (
-                        <button onClick={handleReset}
-                          className="bg-yellow-500 text-blue-900 font-bold py-3 px-6 rounded-md hover:bg-yellow-400 transition-colors">
-                          RESET
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Prawy panel - wyniki */}
-                <div className="pl-0 lg:pl-6 mt-6 lg:mt-0">
-                  <h2 className="text-xl font-semibold text-blue-900 mb-4">Podsumowanie wyliczeń</h2>
-
-                  {showResults && results ? (
-                    <div className="space-y-4">
-                      <div className="bg-gray-50 p-4 rounded-md space-y-2 border-l-4 border-yellow-400">
-                        <p className="text-sm"><strong>Masa ogólna składu:</strong> {results.masaOgolna} t</p>
-                        <p className="text-sm"><strong>Masa ogólna pociągu:</strong> {results.masaOgolna} t</p>
-                        <p className="text-sm"><strong>Masa hamująca wymagana:</strong> {results.masaHamujacaWymagana} t</p>
-                        <p className="text-sm"><strong>Masa hamująca rzeczywista:</strong> {results.masaHamujacaRzeczywista} t</p>
-                        <p className="text-sm"><strong>Procent masy hamującej wymaganej:</strong> {procentWymagany}%</p>
-                        <p className="text-sm"><strong>Procent masy hamującej rzeczywistej:</strong> {results.procentMasyHamujacejRzeczywistej}%</p>
-                        <p className="text-sm"><strong>Ciśnienie powietrza w przewodzie głównym:</strong> 0,5 MPa</p>
-                        <p className="text-sm"><strong>Ciśnienie sprężonego powietrza w przewodzie:</strong> {results.cisnienieSprezonegoPowietrza} MPa</p>
-                      </div>
-
-                      <div className="bg-blue-50 p-4 rounded-md space-y-2 border-l-4 border-blue-500">
-                        <h3 className="font-semibold text-sm text-blue-900 mb-2">Pozostałe parametry:</h3>
-                        <p className="text-sm"><strong>Sprawny hamulec elektrodynamiczny:</strong> {selectedVehicle1.hamulecElektro}</p>
-                        <p className="text-sm"><strong>Sprawny układ sterowania hamulcem el.-pneum.:</strong> {selectedVehicle1.ukladSterowania}</p>
-                        <p className="text-sm"><strong>Sprawny układ zamykania drzwi wejściowych:</strong> {selectedVehicle1.ukladDrzwi}</p>
-                        <p className="text-sm"><strong>Sprawne inne urządzenia:</strong> {selectedVehicle1.inne}</p>
-                      </div>
-
-                      <div className={`p-4 rounded-md flex items-start gap-3 ${results.isSuccess ? 'bg-green-100 border-2 border-green-500' : 'bg-red-100 border-2 border-red-500'}`}>
-                        {results.isSuccess ? (
-                          <>
-                            <CheckCircle className="text-green-600 flex-shrink-0 mt-1" size={24} />
-                            <div>
-                              <p className="font-bold text-green-800">Próba pomyślna ✓</p>
-                              <p className="text-sm text-green-700">Wszystkie warunki zostały spełnione.</p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="text-red-600 flex-shrink-0 mt-1" size={24} />
-                            <div>
-                              <p className="font-bold text-red-800">Próba niepomyślna ✗</p>
-                              <p className="text-sm text-red-700">Konieczne jest wyliczenie nowej prędkości.</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center text-gray-500 py-12">
-                      <p>Wybierz pojazd i wprowadź procent wymagany,</p>
-                      <p>a następnie kliknij "WYLICZ"</p>
-                      <p>aby zobaczyć wyniki obliczeń.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </>
+          </section>
         )}
-      </div>
+
+        <footer className="text-center text-xs text-slate-500 pt-2 pb-6">
+          Grzegorz Rejszel, kier. poc. 186
+        </footer>
+      </main>
 
       {/* ================= OKNO LOGOWANIA ================= */}
       {showLogin && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={closeLogin}>
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm border-t-4 border-blue-900" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-blue-900 flex items-center gap-2"><Lock size={18} /> Tryb administratora</h2>
-              <button onClick={closeLogin} aria-label="Zamknij" className="text-gray-500 hover:text-gray-800"><X size={20} /></button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={closeLogin}>
+          <div className="bg-white rounded-lg shadow-xl p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold text-blue-900">Tryb administratora</h2>
+              <button onClick={closeLogin} aria-label="Zamknij"><X size={18} /></button>
             </div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Hasło</label>
             <input
-              type="password"
-              autoFocus
-              value={password}
-              onChange={e => { setPassword(e.target.value); setLoginError(''); }}
-              onKeyDown={e => { if (e.key === 'Enter') handleLogin(); }}
+              type="password" autoFocus placeholder="Hasło"
+              value={password} onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
               className={inputCls}
             />
             {loginError && <p className="text-sm text-red-700 mt-2">{loginError}</p>}
-            <button
-              onClick={handleLogin}
-              className="mt-4 w-full bg-blue-900 text-white font-bold py-2 rounded-md hover:bg-blue-800 transition-colors"
-            >
+            <button onClick={handleLogin} className="mt-3 w-full py-2 rounded-md bg-blue-900 text-white font-semibold hover:bg-blue-800">
               Zaloguj
             </button>
           </div>
