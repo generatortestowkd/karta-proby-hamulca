@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, CheckCircle, Lock, X, Plus, Trash2, RotateCcw, Download, Upload, LogOut, ArrowDown, ArrowUp } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { AlertCircle, CheckCircle, Lock, X, Plus, Trash2, RotateCcw, Download, Upload, LogOut, ArrowDown, ArrowUp, AlertTriangle } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
@@ -26,30 +26,30 @@ const UPDATE_DOC = doc(db, 'kph', 'aktualizacja');
 const ADMIN_PASSWORD = 'KPH2026';
 
 const DEFAULT_VEHICLES = [
-  { name: "SA108-011", masaOgolna: 59, masaHamujaca: 82, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA132-002", masaOgolna: 98, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA134-001 do SA134-002", masaOgolna: 86, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA134-003 do SA134-007", masaOgolna: 98, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA134-023 do SA134-025", masaOgolna: 98, masaHamujaca: 147, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA135-001 do SA135-003", masaOgolna: 55, masaHamujaca: 93, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA135-004 do SA135-009", masaOgolna: 55, masaHamujaca: 93, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "SA139-010 do SA139-014", masaOgolna: 106, masaHamujaca: 157, cisnienie: 1.0, hamulecElektro: "-", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "48WEc-024 do 48WEc-036", masaOgolna: 201, masaHamujaca: 358, cisnienie: 0.95, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "31WE-001 do 31WE-005", masaOgolna: 172, masaHamujaca: 281, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "31WE-020 do 31WE-024", masaOgolna: 172, masaHamujaca: 281, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "36WEa-011 do 36WEa-016", masaOgolna: 135, masaHamujaca: 217, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "36WEh-012 do 36WEh-017", masaOgolna: 143, masaHamujaca: 228, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "45WE-019 do 45WE-029", masaOgolna: 207, masaHamujaca: 335, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57-1703", masaOgolna: 138, masaHamujaca: 130, cisnienie: 0.7, hamulecElektro: "-", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AKD 1937", masaOgolna: 155, masaHamujaca: 174, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AKM 1718", masaOgolna: 140, masaHamujaca: 165, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AL 1501", masaOgolna: 147, masaHamujaca: 161, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN57AL 1542", masaOgolna: 147, masaHamujaca: 161, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
-  { name: "EN67AL 1938", masaOgolna: 145, masaHamujaca: 161, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" }
+  { name: "SA108-011", masaOgolna: 59, masaHamujaca: 82, cisnienieGlowny: 0.5, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "SA132-002", masaOgolna: 98, masaHamujaca: 147, cisnienieGlowny: 0.5, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "SA134-001 do SA134-002", masaOgolna: 86, masaHamujaca: 147, cisnienieGlowny: 0.5, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "SA134-003 do SA134-007", masaOgolna: 98, masaHamujaca: 147, cisnienieGlowny: 0.5, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "SA134-023 do SA134-025", masaOgolna: 98, masaHamujaca: 147, cisnienieGlowny: 0.5, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "SA135-001 do SA135-003", masaOgolna: 55, masaHamujaca: 93, cisnienieGlowny: 0.5, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "SA135-004 do SA135-009", masaOgolna: 55, masaHamujaca: 93, cisnienieGlowny: 0.5, cisnienie: 0.8, hamulecElektro: "-", ukladSterowania: "-", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "SA139-010 do SA139-014", masaOgolna: 106, masaHamujaca: 157, cisnienieGlowny: 0.5, cisnienie: 1.0, hamulecElektro: "-", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "48WEc-024 do 48WEc-036", masaOgolna: 201, masaHamujaca: 358, cisnienieGlowny: 0.5, cisnienie: 0.95, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "31WE-001 do 31WE-005", masaOgolna: 172, masaHamujaca: 281, cisnienieGlowny: 0.5, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "31WE-020 do 31WE-024", masaOgolna: 172, masaHamujaca: 281, cisnienieGlowny: 0.5, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "36WEa-011 do 36WEa-016", masaOgolna: 135, masaHamujaca: 217, cisnienieGlowny: 0.5, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "36WEh-012 do 36WEh-017", masaOgolna: 143, masaHamujaca: 228, cisnienieGlowny: 0.5, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "45WE-019 do 45WE-029", masaOgolna: 207, masaHamujaca: 335, cisnienieGlowny: 0.5, cisnienie: 1.0, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "EN57-1703", masaOgolna: 138, masaHamujaca: 130, cisnienieGlowny: 0.5, cisnienie: 0.7, hamulecElektro: "-", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "EN57AKD 1937", masaOgolna: 155, masaHamujaca: 174, cisnienieGlowny: 0.5, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "EN57AKM 1718", masaOgolna: 140, masaHamujaca: 165, cisnienieGlowny: 0.5, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "EN57AL 1501", masaOgolna: 147, masaHamujaca: 161, cisnienieGlowny: 0.5, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "EN57AL 1542", masaOgolna: 147, masaHamujaca: 161, cisnienieGlowny: 0.5, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" },
+  { name: "EN67AL 1938", masaOgolna: 145, masaHamujaca: 161, cisnienieGlowny: 0.5, cisnienie: 0.7, hamulecElektro: "TAK", ukladSterowania: "TAK", ukladDrzwi: "TAK", inne: "TAK" }
 ].map((v, i) => ({ id: 'v' + (i + 1), ...v }));
 
 const EMPTY_VEHICLE = {
-  name: '', masaOgolna: '', masaHamujaca: '', cisnienie: '',
+  name: '', masaOgolna: '', masaHamujaca: '', cisnienieGlowny: '0.5', cisnienie: '',
   hamulecElektro: 'TAK', ukladSterowania: 'TAK', ukladDrzwi: 'TAK', inne: 'TAK'
 };
 
@@ -76,6 +76,17 @@ const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
+
+// ciśnienie w przewodzie głównym — pojazdy zapisane wcześniej nie mają tego pola, więc przyjmujemy 0,5 MPa
+const DEFAULT_CISNIENIE_GLOWNE = 0.5;
+const cisnienieGlowne = (v) =>
+  v && v.cisnienieGlowny !== undefined && v.cisnienieGlowny !== '' ? Number(v.cisnienieGlowny) : DEFAULT_CISNIENIE_GLOWNE;
+
+// sortowanie alfabetyczne z uwzględnieniem liczb (31WE przed 36WEa, SA108 przed SA132)
+const sortByName = (list) =>
+  [...list].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pl', { numeric: true, sensitivity: 'base' }));
+
+const formatMPa = (n) => Number(n).toLocaleString('pl-PL', { maximumFractionDigits: 3 });
 
 const toNumber = (val) => {
   if (val === '' || val === null || val === undefined) return '';
@@ -184,6 +195,8 @@ export default function BrakeTestCalculator() {
     if (vehicle2 && !vehicles.some(v => v.id === vehicle2)) setVehicle2('');
   }, [vehicles, vehicle1, vehicle2]);
 
+  const sortedVehicles = useMemo(() => sortByName(vehicles), [vehicles]);
+
   const selectedVehicle1 = vehicles.find(v => v.id === vehicle1);
   const selectedVehicle2 = vehicles.find(v => v.id === vehicle2);
 
@@ -212,6 +225,10 @@ export default function BrakeTestCalculator() {
     // Pr = 100 × Mhr / Mo — zaokrąglamy w dół
     const procentMasyHamujacejRzeczywistej = Math.floor((masaHamujacaRzeczywista * 100) / masaOgolna);
 
+    const cisnienieWPrzewodzieGlownym = selectedVehicle2
+      ? Math.max(cisnienieGlowne(selectedVehicle1), cisnienieGlowne(selectedVehicle2))
+      : cisnienieGlowne(selectedVehicle1);
+
     const cisnienieSprezonegoPowietrza = selectedVehicle2
       ? Math.max(Number(selectedVehicle1.cisnienie), Number(selectedVehicle2.cisnienie))
       : Number(selectedVehicle1.cisnienie);
@@ -223,7 +240,7 @@ export default function BrakeTestCalculator() {
       masaOgolna, masaHamujacaRzeczywista,
       masaHamujacaWymagana,
       procentMasyHamujacejRzeczywistej,
-      cisnienieSprezonegoPowietrza, isSuccess
+      cisnienieWPrzewodzieGlownym, cisnienieSprezonegoPowietrza, isSuccess
     };
   };
 
@@ -269,6 +286,7 @@ export default function BrakeTestCalculator() {
     const name = newVehicle.name.trim();
     const mo = toNumber(newVehicle.masaOgolna);
     const mh = toNumber(newVehicle.masaHamujaca);
+    const pg = toNumber(newVehicle.cisnienieGlowny);
     const p = toNumber(newVehicle.cisnienie);
 
     if (!name) return setAddError('Wpisz nazwę serii pojazdów.');
@@ -276,11 +294,12 @@ export default function BrakeTestCalculator() {
       return setAddError('Pojazd o tej nazwie już jest na liście.');
     if (mo === '' || mo <= 0) return setAddError('Wpisz masę ogólną większą od zera.');
     if (mh === '' || mh <= 0) return setAddError('Wpisz masę hamującą większą od zera.');
-    if (p === '' || p <= 0) return setAddError('Wpisz ciśnienie większe od zera.');
+    if (pg === '' || pg <= 0) return setAddError('Wpisz ciśnienie powietrza w przewodzie głównym większe od zera.');
+    if (p === '' || p <= 0) return setAddError('Wpisz ciśnienie sprężonego powietrza w przewodzie większe od zera.');
 
     changeVehicles(list => [...list, {
       ...newVehicle, id: 'v' + Date.now(), name,
-      masaOgolna: mo, masaHamujaca: mh, cisnienie: p
+      masaOgolna: mo, masaHamujaca: mh, cisnienieGlowny: pg, cisnienie: p
     }]);
     setNewVehicle(EMPTY_VEHICLE);
     setAddError('');
@@ -380,6 +399,15 @@ export default function BrakeTestCalculator() {
           <div className="text-center relative z-10 pt-6 sm:pt-2">
             <h1 className="text-4xl font-bold text-blue-900">Próba hamulca</h1>
             <p className="text-lg text-gray-700 mt-3 font-medium">Aplikacja dla kierowników pociągu wypełniających kartę próby hamulca.</p>
+
+            <div className="mt-3 mx-auto max-w-2xl flex items-start gap-1.5 bg-red-50 border border-red-200 text-red-700 rounded px-2 py-1 text-left">
+              <AlertTriangle className="flex-shrink-0 mt-px" size={12} />
+              <p className="text-[11px] leading-snug">
+                Aplikacja ma charakter wyłącznie pomocniczy i ułatwia wypełnienie karty próby hamulca.
+                Korzystasz z niej na własną odpowiedzialność — nie zwalnia ona kierownika pociągu z obowiązku
+                sprawdzenia, czy wyliczone wartości są prawidłowe.
+              </p>
+            </div>
 
             {(updateInfo.date || updateInfo.changes) && (
               <div className="inline-block mt-4 bg-white/80 border-l-4 border-yellow-400 px-4 py-2 rounded text-left max-w-2xl">
@@ -482,11 +510,15 @@ export default function BrakeTestCalculator() {
                     onChange={e => setNewVehicle({ ...newVehicle, masaHamujaca: e.target.value })} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ciśnienie [MPa]</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ciśnienie powietrza w przewodzie głównym [MPa]</label>
+                  <input type="number" min="0" step="0.01" value={newVehicle.cisnienieGlowny}
+                    onChange={e => setNewVehicle({ ...newVehicle, cisnienieGlowny: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ciśnienie sprężonego powietrza w przewodzie [MPa]</label>
                   <input type="number" min="0" step="0.01" value={newVehicle.cisnienie}
                     onChange={e => setNewVehicle({ ...newVehicle, cisnienie: e.target.value })} className={inputCls} />
                 </div>
-                <div className="hidden lg:block" />
                 {YES_NO_FIELDS.map(f => (
                   <div key={f.key}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
@@ -512,7 +544,7 @@ export default function BrakeTestCalculator() {
             <p className="text-sm text-gray-600 mb-3">Zmiany zapisują się automatycznie i od razu widzą je wszyscy.</p>
 
             <div className="space-y-3">
-              {vehicles.map(v => (
+              {sortedVehicles.map(v => (
                 <div key={v.id} className="border-2 border-blue-100 rounded-md p-3 bg-blue-50/40">
                   <div className="flex gap-2 items-end mb-2">
                     <div className="flex-1">
@@ -530,7 +562,7 @@ export default function BrakeTestCalculator() {
                       <Trash2 size={18} />
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Masa ogólna [t]</label>
                       <input type="number" min="0" step="any" value={v.masaOgolna}
@@ -542,7 +574,12 @@ export default function BrakeTestCalculator() {
                         onChange={e => updateVehicle(v.id, 'masaHamujaca', toNumber(e.target.value))} className={smallInputCls} />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Ciśnienie [MPa]</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Ciśn. w przew. głównym [MPa]</label>
+                      <input type="number" min="0" step="0.01" value={v.cisnienieGlowny ?? DEFAULT_CISNIENIE_GLOWNE}
+                        onChange={e => updateVehicle(v.id, 'cisnienieGlowny', toNumber(e.target.value))} className={smallInputCls} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Ciśn. sprężonego powietrza [MPa]</label>
                       <input type="number" min="0" step="0.01" value={v.cisnienie}
                         onChange={e => updateVehicle(v.id, 'cisnienie', toNumber(e.target.value))} className={smallInputCls} />
                     </div>
@@ -639,14 +676,20 @@ export default function BrakeTestCalculator() {
               <div className="grid lg:grid-cols-2 gap-6 divide-x-0 lg:divide-x-2 divide-gray-300">
                 {/* Lewy panel - wybór pojazdów */}
                 <div className="pr-0 lg:pr-6">
-                  <h2 className="text-xl font-semibold text-blue-900 mb-4">Wybór pojazdów</h2>
+                  <h2 className="text-xl font-semibold text-blue-900 mb-3">Wybór pojazdów</h2>
+
+                  <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-md">
+                    <p className="text-sm text-blue-900">
+                      Przy wykonywaniu próby hamulca dla dwóch połączonych składów należy wybrać dwa pojazdy.
+                    </p>
+                  </div>
 
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Pojazd 1 *</label>
                       <select value={vehicle1} onChange={(e) => setVehicle1(e.target.value)} className={inputCls}>
                         <option value="">-- Wybierz pojazd --</option>
-                        {vehicles.map(v => (
+                        {sortedVehicles.map(v => (
                           <option key={v.id} value={v.id}>{v.name}</option>
                         ))}
                       </select>
@@ -663,7 +706,7 @@ export default function BrakeTestCalculator() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Pojazd 2 (opcjonalnie)</label>
                       <select value={vehicle2} onChange={(e) => setVehicle2(e.target.value)} className={inputCls} disabled={!vehicle1}>
                         <option value="">-- Wybierz pojazd --</option>
-                        {vehicles.map(v => (
+                        {sortedVehicles.map(v => (
                           <option key={v.id} value={v.id}>{v.name}</option>
                         ))}
                       </select>
@@ -714,8 +757,8 @@ export default function BrakeTestCalculator() {
                         <p className="text-sm"><strong>Masa hamująca rzeczywista:</strong> {results.masaHamujacaRzeczywista} t</p>
                         <p className="text-sm"><strong>Procent masy hamującej wymaganej:</strong> {procentWymagany}%</p>
                         <p className="text-sm"><strong>Procent masy hamującej rzeczywistej:</strong> {results.procentMasyHamujacejRzeczywistej}%</p>
-                        <p className="text-sm"><strong>Ciśnienie powietrza w przewodzie głównym:</strong> 0,5 MPa</p>
-                        <p className="text-sm"><strong>Ciśnienie sprężonego powietrza w przewodzie:</strong> {results.cisnienieSprezonegoPowietrza} MPa</p>
+                        <p className="text-sm"><strong>Ciśnienie powietrza w przewodzie głównym:</strong> {formatMPa(results.cisnienieWPrzewodzieGlownym)} MPa</p>
+                        <p className="text-sm"><strong>Ciśnienie sprężonego powietrza w przewodzie:</strong> {formatMPa(results.cisnienieSprezonegoPowietrza)} MPa</p>
                       </div>
 
                       <div className="bg-blue-50 p-4 rounded-md space-y-2 border-l-4 border-blue-500">
