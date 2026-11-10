@@ -104,6 +104,113 @@ function Fraction({ top, bottom }) {
   );
 }
 
+// ===== KARTA PRÓBY HAMULCA (odwzorowanie druku) =====
+const tak = (v) => (v === 'TAK' ? 'tak' : '-');
+
+function KartaProbyHamulca({ dane, numer, liczba }) {
+  const td = "border border-gray-800 px-1 py-0.5 align-middle";
+  const val = td + " text-center font-bold text-blue-900 bg-blue-50/60 text-[12px] whitespace-nowrap";
+  const empty = td;
+  const nr = td + " text-center w-6";
+  const sup = (t) => <sup className="text-[8px]">{t}</sup>;
+
+  const Group = ({ rows, children }) => (
+    <td rowSpan={rows} className={td + " w-6 p-0"}>
+      <div className="flex items-center justify-center h-full">
+        <span className="text-[9px] leading-tight whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>{children}</span>
+      </div>
+    </td>
+  );
+  const Cols = ({ v }) => (<><td className={val}>{v}</td><td className={empty}></td><td className={empty}></td><td className={empty}></td></>);
+
+  return (
+    <div className="bg-white border border-gray-300 rounded-md shadow-sm p-2">
+      {liczba > 1 && (
+        <p className="text-xs font-semibold text-blue-900 mb-1">Karta {numer} z {liczba}</p>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[500px] border-collapse text-[10.5px] leading-tight text-gray-900 bg-white">
+          <colgroup>
+            <col style={{ width: '20px' }} /><col style={{ width: '62px' }} /><col style={{ width: '64px' }} />
+            <col style={{ width: '34px' }} /><col style={{ width: '30px' }} /><col style={{ width: '22px' }} />
+            <col style={{ width: '17%' }} /><col style={{ width: '13%' }} /><col style={{ width: '13%' }} /><col style={{ width: '13%' }} />
+          </colgroup>
+          <tbody>
+            <tr><td colSpan={10} className={td + " text-center font-bold text-[13px] py-1.5 tracking-wide"}>KARTA PRÓBY HAMULCA I URZĄDZEŃ PNEUMATYCZNYCH POCIĄGU</td></tr>
+            <tr>
+              <td colSpan={6} className={td + " h-16 p-0 text-center"}>
+                <div className="flex flex-col justify-between h-16 py-0.5">
+                  <span></span>
+                  <span className="font-bold text-blue-900 text-[11px] px-1">Stacja, na której wykonano próbę hamulca</span>
+                  <span className="text-[9px]">Nazwa stacji</span>
+                </div>
+              </td>
+              <td colSpan={2} className={td + " h-16 p-0 text-center"}>
+                <div className="flex flex-col justify-between h-16 py-0.5">
+                  <span className="text-[9px]">Miejsce wystawienia karty</span>
+                  <span className="font-bold text-blue-900 text-[12px]">{dane.dataWystawienia}</span>
+                  <span className="text-[9px]">Data wystawienia</span>
+                </div>
+              </td>
+              <td colSpan={2} className={td + " h-16 align-bottom text-center text-[9px]"}>Imię, nazwisko i podpis wystawiającego</td>
+            </tr>
+            <tr>
+              <td colSpan={6} className={td}>Próba</td>
+              <td className={td + " text-center"}>1</td><td className={td + " text-center"}>2</td>
+              <td className={td + " text-center"}>3</td><td className={td + " text-center"}>4</td>
+            </tr>
+
+            <tr><td colSpan={5} className={td}>Rodzaj próby{sup('1)')}</td><td className={nr}>1</td><Cols v={dane.pole1} /></tr>
+            <tr><td colSpan={5} className={td}>Numer pociągu lub obiegu</td><td className={nr}>2</td><Cols v="" /></tr>
+            <tr><td colSpan={5} className={td}>Miejsce wykonania próby</td><td className={nr}>3</td><Cols v="" /></tr>
+            <tr><td colSpan={5} className={td}>Data i godzina zakończenia próby</td><td className={nr}>4</td><Cols v="" /></tr>
+
+            <tr><Group rows={3}>Próbę wykonano{sup('2)')}</Group><td colSpan={4} className={td}>z zespołu trakcyjnego</td><td className={nr}>5</td><Cols v={dane.pole5} /></tr>
+            <tr><td colSpan={4} className={td}>z innego pojazdu trakcyjnego</td><td className={nr}>6</td><Cols v={dane.pole6} /></tr>
+            <tr><td colSpan={4} className={td}>z urządzenia stacjonarnego</td><td className={nr}>7</td><Cols v="-" /></tr>
+
+            <tr>
+              <Group rows={6}>Dane o pociągu</Group>
+              <td rowSpan={2} className={td}>masa</td>
+              <td className={td}>ogólna składu</td><td className={td + " text-center"}>M<sub>os</sub></td><td className={td + " text-center"}>[t]</td><td className={nr}>8</td><Cols v={dane.mos} />
+            </tr>
+            <tr><td className={td}>ogólna pociągu</td><td className={td + " text-center"}>M<sub>O</sub></td><td className={td + " text-center"}>[t]</td><td className={nr}>9</td><Cols v={dane.mo} /></tr>
+            <tr>
+              <td rowSpan={2} className={td}>masa hamująca</td>
+              <td className={td}>wymagana</td><td className={td + " text-center"}>M<sub><i>hw</i></sub></td><td className={td + " text-center"}>[t]</td><td className={nr}>10</td><Cols v={dane.mhw} />
+            </tr>
+            <tr><td className={td}>rzeczywista</td><td className={td + " text-center"}>M<sub><i>hr</i></sub></td><td className={td + " text-center"}>[t]</td><td className={nr}>11</td><Cols v={dane.mhr} /></tr>
+            <tr>
+              <td rowSpan={2} className={td}>procent masy hamującej</td>
+              <td className={td}>wymaganej</td><td className={td + " text-center"}>P<sub><i>W</i></sub></td><td className={td + " text-center"}>[%]</td><td className={nr}>12</td><Cols v={dane.pw} />
+            </tr>
+            <tr><td className={td}>rzeczywistej</td><td className={td + " text-center"}>P<sub><i>R</i></sub></td><td className={td + " text-center"}>[%]</td><td className={nr}>13</td><Cols v={dane.pr} /></tr>
+
+            <tr>
+              <td colSpan={2} rowSpan={2} className={td}>Ciśnienie powietrza w przewodzie głównym:</td>
+              <td colSpan={2} className={td}>hamulca</td><td className={td + " text-center"}>MPa</td><td className={nr}>14</td><Cols v={dane.p14} />
+            </tr>
+            <tr><td colSpan={2} className={td}>sprężonego powietrza</td><td className={td + " text-center"}>MPa</td><td className={nr}>15</td><Cols v={dane.p15} /></tr>
+
+            <tr><Group rows={4}>Sprawne:</Group><td colSpan={4} className={td}>hamulec elektrodynamiczny{sup('3)')}</td><td className={nr}>16</td><Cols v={dane.r16} /></tr>
+            <tr><td colSpan={4} className={td}>układ sterowania hamulcem el.-pneum.{sup('3) 4)')}</td><td className={nr}>17</td><Cols v={dane.r17} /></tr>
+            <tr><td colSpan={4} className={td}>układ zamykania drzwi wejściowych{sup('3) 5)')}</td><td className={nr}>18</td><Cols v={dane.r18} /></tr>
+            <tr><td colSpan={4} className={td}>inne urządzenia{sup('3) 6)')}</td><td className={nr}>19</td><Cols v={dane.r19} /></tr>
+          </tbody>
+        </table>
+      </div>
+      <ol className="mt-1.5 text-[9px] leading-snug text-gray-700 space-y-0.5">
+        <li><sup>1)</sup> Wpisać <b>S</b> – dla próby szczegółowej, <b>U</b> – dla próby uproszczonej.</li>
+        <li><sup>2)</sup> Podać numer inwentarzowy pojazdu trakcyjnego albo numer stanowiska.</li>
+        <li><sup>3)</sup> Wpisać słowo „tak” lub „nie”.</li>
+        <li><sup>4)</sup> Obowiązuje dla pojazdów wyposażonych w hamulec elektropneumatyczny (el.-pneum.).</li>
+        <li><sup>5)</sup> Obowiązuje dla pojazdów wyposażonych co najmniej w urządzenia do zdalnego zamykania drzwi wejściowych lub układ uzależniający otwarcie drzwi wejściowych od zatrzymania się pociągu.</li>
+        <li><sup>6)</sup> Dotyczy pojazdów wyposażonych w urządzenia do wspomagania otwierania i zamykania drzwi przejść międzywagonowych, drzwi przedziałów, urządzeń zamkniętego WC, urządzeń wyładowczych i innych.</li>
+      </ol>
+    </div>
+  );
+}
+
 export default function BrakeTestCalculator() {
   const [vehicles, setVehicles] = useState(DEFAULT_VEHICLES);
   const [vehiclesLoaded, setVehiclesLoaded] = useState(false);
@@ -115,6 +222,8 @@ export default function BrakeTestCalculator() {
   const [vehicle2, setVehicle2] = useState('');
   const [procentWymagany, setProcentWymagany] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [showFailModal, setShowFailModal] = useState(false);
+  const [dataWystawienia, setDataWystawienia] = useState('');
 
   // tryb administratora
   const [showLogin, setShowLogin] = useState(false);
@@ -201,7 +310,11 @@ export default function BrakeTestCalculator() {
   const selectedVehicle2 = vehicles.find(v => v.id === vehicle2);
 
   const handleCalculate = () => {
-    if (selectedVehicle1 && procentWymagany) setShowResults(true);
+    if (!selectedVehicle1 || !procentWymagany) return;
+    setDataWystawienia(formatDate(todayIso()));
+    setShowResults(true);
+    const r = calculateResults();
+    if (r && !r.isSuccess) setShowFailModal(true);
   };
 
   const handleReset = () => {
@@ -245,6 +358,34 @@ export default function BrakeTestCalculator() {
   };
 
   const results = calculateResults();
+
+  // dane do wpisania w kartę (kolumna 1)
+  const karty = (() => {
+    if (!results || !selectedVehicle1) return [];
+    const wybrane = [selectedVehicle1, selectedVehicle2].filter(Boolean);
+    const anyTak = (key) => (wybrane.some(v => v[key] === 'TAK') ? 'tak' : '-');
+    const wspolne = {
+      pole1: 'S + OT',
+      dataWystawienia,
+      mos: results.masaOgolna,
+      mo: results.masaOgolna,
+      mhw: results.masaHamujacaWymagana,
+      mhr: results.masaHamujacaRzeczywista,
+      pw: procentWymagany,
+      pr: results.procentMasyHamujacejRzeczywistej,
+      p14: formatMPa(results.cisnienieWPrzewodzieGlownym),
+      p15: Number(results.cisnienieSprezonegoPowietrza).toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 3 }),
+      r16: anyTak('hamulecElektro'),
+      r17: anyTak('ukladSterowania'),
+      r18: anyTak('ukladDrzwi'),
+      r19: anyTak('inne'),
+    };
+    if (!selectedVehicle2) return [{ ...wspolne, pole5: 'nr pojazdu', pole6: '-' }];
+    return [
+      { ...wspolne, pole5: 'nr pojazdu', pole6: '-' },
+      { ...wspolne, pole5: '-', pole6: 'nr pojazdu' },
+    ];
+  })();
 
   // ===== LOGOWANIE =====
   const handleLogin = () => {
@@ -746,48 +887,30 @@ export default function BrakeTestCalculator() {
 
                 {/* Prawy panel - wyniki */}
                 <div className="pl-0 lg:pl-6 mt-6 lg:mt-0">
-                  <h2 className="text-xl font-semibold text-blue-900 mb-4">Podsumowanie wyliczeń</h2>
+                  <h2 className="text-xl font-semibold text-blue-900 mb-4">
+                    {showResults && results ? (karty.length > 1 ? 'Karty próby hamulca' : 'Karta próby hamulca') : 'Podsumowanie wyliczeń'}
+                  </h2>
 
                   {showResults && results ? (
                     <div className="space-y-4">
-                      <div className="bg-gray-50 p-4 rounded-md space-y-2 border-l-4 border-yellow-400">
-                        <p className="text-sm"><strong>Masa ogólna składu:</strong> {results.masaOgolna} t</p>
-                        <p className="text-sm"><strong>Masa ogólna pociągu:</strong> {results.masaOgolna} t</p>
-                        <p className="text-sm"><strong>Masa hamująca wymagana:</strong> {results.masaHamujacaWymagana} t</p>
-                        <p className="text-sm"><strong>Masa hamująca rzeczywista:</strong> {results.masaHamujacaRzeczywista} t</p>
-                        <p className="text-sm"><strong>Procent masy hamującej wymaganej:</strong> {procentWymagany}%</p>
-                        <p className="text-sm"><strong>Procent masy hamującej rzeczywistej:</strong> {results.procentMasyHamujacejRzeczywistej}%</p>
-                        <p className="text-sm"><strong>Ciśnienie powietrza w przewodzie głównym:</strong> {formatMPa(results.cisnienieWPrzewodzieGlownym)} MPa</p>
-                        <p className="text-sm"><strong>Ciśnienie sprężonego powietrza w przewodzie:</strong> {formatMPa(results.cisnienieSprezonegoPowietrza)} MPa</p>
-                      </div>
+                      {karty.map((dane, i) => (
+                        <KartaProbyHamulca key={i} dane={dane} numer={i + 1} liczba={karty.length} />
+                      ))}
 
-                      <div className="bg-blue-50 p-4 rounded-md space-y-2 border-l-4 border-blue-500">
-                        <h3 className="font-semibold text-sm text-blue-900 mb-2">Pozostałe parametry:</h3>
-                        <p className="text-sm"><strong>Sprawny hamulec elektrodynamiczny:</strong> {selectedVehicle1.hamulecElektro}</p>
-                        <p className="text-sm"><strong>Sprawny układ sterowania hamulcem el.-pneum.:</strong> {selectedVehicle1.ukladSterowania}</p>
-                        <p className="text-sm"><strong>Sprawny układ zamykania drzwi wejściowych:</strong> {selectedVehicle1.ukladDrzwi}</p>
-                        <p className="text-sm"><strong>Sprawne inne urządzenia:</strong> {selectedVehicle1.inne}</p>
-                      </div>
-
-                      <div className={`p-4 rounded-md flex items-start gap-3 ${results.isSuccess ? 'bg-green-100 border-2 border-green-500' : 'bg-red-100 border-2 border-red-500'}`}>
-                        {results.isSuccess ? (
-                          <>
-                            <CheckCircle className="text-green-600 flex-shrink-0 mt-1" size={24} />
-                            <div>
-                              <p className="font-bold text-green-800">Próba pomyślna ✓</p>
-                              <p className="text-sm text-green-700">Wszystkie warunki zostały spełnione.</p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="text-red-600 flex-shrink-0 mt-1" size={24} />
-                            <div>
-                              <p className="font-bold text-red-800">Próba niepomyślna ✗</p>
-                              <p className="text-sm text-red-700">Konieczne jest wyliczenie nowej prędkości.</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      {results.isSuccess ? (
+                        <div className="p-4 rounded-md flex items-start gap-3 bg-green-100 border-2 border-green-500">
+                          <CheckCircle className="text-green-600 flex-shrink-0 mt-1" size={24} />
+                          <div>
+                            <p className="font-bold text-green-800">Próba pomyślna ✓</p>
+                            <p className="text-sm text-green-700">Wszystkie warunki zostały spełnione.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setShowFailModal(true)}
+                          className="w-full text-left p-3 rounded-md flex items-center gap-2 bg-red-50 border border-red-300 text-sm text-red-800 hover:bg-red-100">
+                          <AlertCircle size={18} className="flex-shrink-0" /> Próba niepomyślna – pokaż komunikat
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center text-gray-500 py-12">
@@ -803,6 +926,24 @@ export default function BrakeTestCalculator() {
           </>
         )}
       </div>
+
+      {/* ================= OKNO: PRÓBA NIEPOMYŚLNA ================= */}
+      {showFailModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="fail-title">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm border-t-4 border-red-600 text-center">
+            <AlertCircle className="text-red-600 mx-auto mb-3" size={40} />
+            <p id="fail-title" className="text-lg font-bold text-red-800">Próba niepomyślna ✗</p>
+            <p className="text-sm text-red-700 mt-2">Konieczne jest wyliczenie nowej prędkości.</p>
+            <button
+              autoFocus
+              onClick={() => setShowFailModal(false)}
+              className="mt-5 w-full bg-blue-900 text-white font-bold py-2 rounded-md hover:bg-blue-800 transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ================= OKNO LOGOWANIA ================= */}
       {showLogin && (
